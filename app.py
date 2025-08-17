@@ -1,5 +1,5 @@
 import streamlit as st
-from data_models import SituationActuelle, NouveauProjet, PremierBien
+from data_models import SituationActuelle, NouveauProjet, PremierBien, PorteurProjet
 from calculs import calcul_ratios
 
 st.set_page_config(page_title="Simulation Invest Immo", layout="centered")
@@ -36,36 +36,114 @@ with st.expander("📖 Mode d’emploi (cliquez pour afficher)", expanded=True):
 # --- Situation actuelle ---
 st.header("1. Votre situation actuelle")
 
-revenus = st.number_input(
-    "Revenus mensuels nets (salaires uniquement)",
-    min_value=0.0, step=100.0,
-    help="Vos salaires nets (après impôts et cotisations). Les loyers seront comptés séparément."
+mode_porteurs = st.radio(
+    "Mode de saisie :",
+    ["Saisie simple", "Projet à plusieurs (couple, associés...)"],
+    help="Choisissez 'Projet à plusieurs' si vous voulez détailler les revenus/charges de chaque porteur du projet."
 )
 
-charges = st.number_input(
-    "Charges mensuelles (hors crédits)",
-    min_value=0.0, step=50.0,
-    help="Vos charges fixes : alimentation, assurances, abonnements, factures, etc. ⚠️ N'incluez pas vos mensualités de prêts ici."
-)
+porteurs = []
+if mode_porteurs == "Projet à plusieurs":
+    st.subheader("👥 Porteurs du projet")
+    
+    nb_porteurs = st.number_input(
+        "Nombre de porteurs du projet",
+        min_value=2, max_value=4, value=2, step=1,
+        help="Nombre de personnes qui participent financièrement au projet (ex: 2 pour un couple)."
+    )
+    
+    total_pourcentage = 0
+    for i in range(nb_porteurs):
+        st.write(f"**Porteur {i+1} :**")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            nom = st.text_input(f"Nom/Prénom", value=f"Porteur {i+1}", key=f"nom_{i}")
+            revenus_porteur = st.number_input(
+                f"Revenus nets mensuels (€)", 
+                min_value=0.0, step=100.0, key=f"revenus_{i}",
+                help="Salaires nets de cette personne."
+            )
+            charges_porteur = st.number_input(
+                f"Charges mensuelles (€)", 
+                min_value=0.0, step=50.0, key=f"charges_{i}",
+                help="Charges fixes personnelles de cette personne."
+            )
+        
+        with col2:
+            credits_porteur = st.number_input(
+                f"Crédits mensuels (€)", 
+                min_value=0.0, step=50.0, key=f"credits_{i}",
+                help="Mensualités crédits personnels de cette personne."
+            )
+            pourcentage = st.number_input(
+                f"% de participation au projet", 
+                min_value=0.0, max_value=100.0, step=5.0, key=f"pourcentage_{i}",
+                help="Pourcentage de participation de cette personne dans le projet immobilier."
+            )
+        
+        total_pourcentage += pourcentage
+        
+        if revenus_porteur > 0 and pourcentage > 0:
+            porteurs.append(PorteurProjet(
+                nom=nom,
+                revenus_mensuels=revenus_porteur,
+                charges_mensuelles=charges_porteur,
+                credits_mensuels=credits_porteur,
+                pourcentage_projet=pourcentage
+            ))
+    
+    if abs(total_pourcentage - 100) > 0.1:
+        st.error(f"⚠️ La somme des pourcentages doit être 100%. Actuellement : {total_pourcentage}%")
+    else:
+        st.success(f"✅ Répartition OK : {total_pourcentage}%")
 
-credits = st.number_input(
-    "Mensualités autres crédits (hors immobilier)",
-    min_value=0.0, step=50.0,
-    help="Mensualités de crédits consommation, auto, etc. ⚠️ N'incluez pas les prêts immobiliers ici, ils seront traités séparément."
-)
+    personnes = st.number_input(
+        "Nombre de personnes dans le foyer",
+        min_value=1, step=1,
+        help="Nombre total de personnes vivant dans le foyer (adulte(s) + enfants)."
+    )
 
-personnes = st.number_input(
-    "Nombre de personnes dans le foyer",
-    min_value=1, step=1,
-    help="Nombre total de personnes vivant dans le foyer (adulte(s) + enfants). Sert à estimer le 'reste à vivre' nécessaire."
-)
+    situation = SituationActuelle(
+        revenus_mensuels=0,  # Sera calculé à partir des porteurs
+        charges_mensuelles=0,  # Sera calculé à partir des porteurs
+        credits_mensuels=0,  # Sera calculé à partir des porteurs
+        personnes_foyer=personnes,
+        porteurs=porteurs,
+    )
 
-situation = SituationActuelle(
-    revenus_mensuels=revenus,
-    charges_mensuelles=charges,
-    credits_mensuels=credits,
-    personnes_foyer=personnes,
-)
+else:
+    # Mode simple
+    revenus = st.number_input(
+        "Revenus mensuels nets (salaires uniquement)",
+        min_value=0.0, step=100.0,
+        help="Vos salaires nets (après impôts et cotisations). Les loyers seront comptés séparément."
+    )
+
+    charges = st.number_input(
+        "Charges mensuelles (hors crédits)",
+        min_value=0.0, step=50.0,
+        help="Vos charges fixes : alimentation, assurances, abonnements, factures, etc. ⚠️ N'incluez pas vos mensualités de prêts ici."
+    )
+
+    credits = st.number_input(
+        "Mensualités autres crédits (hors immobilier)",
+        min_value=0.0, step=50.0,
+        help="Mensualités de crédits consommation, auto, etc. ⚠️ N'incluez pas les prêts immobiliers ici, ils seront traités séparément."
+    )
+
+    personnes = st.number_input(
+        "Nombre de personnes dans le foyer",
+        min_value=1, step=1,
+        help="Nombre total de personnes vivant dans le foyer (adulte(s) + enfants). Sert à estimer le 'reste à vivre' nécessaire."
+    )
+
+    situation = SituationActuelle(
+        revenus_mensuels=revenus,
+        charges_mensuelles=charges,
+        credits_mensuels=credits,
+        personnes_foyer=personnes,
+    )
 
 # --- Premier bien existant ---
 st.header("1.bis. Premier bien immobilier (optionnel)")
@@ -215,6 +293,40 @@ if st.button("Calculer"):
             st.success("✅ Suffisant")
         else:
             st.error("⚠️ Insuffisant")
+
+    # Détails par porteur si applicable
+    if resultats.get('details_porteurs'):
+        st.divider()
+        st.subheader("📊 Détail par porteur du projet")
+        
+        for detail in resultats['details_porteurs']:
+            with st.expander(f"👤 {detail['nom']} - {detail['pourcentage']}% du projet"):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Revenus salaires", f"{detail['revenus_salaires']:.0f} €")
+                    st.metric("Revenus locatifs", f"{detail['revenus_locatifs']:.0f} €")
+                    st.metric("Revenus totaux", f"{detail['revenus_totaux']:.0f} €")
+                
+                with col2:
+                    st.metric("Mensualités totales", f"{detail['mensualites_totales']:.0f} €")
+                    
+                    taux_end_pct = detail['taux_endettement'] * 100
+                    st.metric("Taux d'endettement", f"{taux_end_pct:.1f} %")
+                    if taux_end_pct > 35:
+                        st.error("⚠️ > 35%")
+                    else:
+                        st.success("✅ OK")
+                
+                with col3:
+                    taux_eff_pct = detail['taux_effort'] * 100
+                    st.metric("Taux d'effort", f"{taux_eff_pct:.1f} %")
+                    
+                    st.metric("Reste à vivre", f"{detail['reste_a_vivre']:.0f} €")
+                    if detail['reste_a_vivre'] >= 800:
+                        st.success("✅ OK")
+                    else:
+                        st.error("⚠️ Faible")
 
     st.divider()
 
