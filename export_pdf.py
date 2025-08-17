@@ -8,7 +8,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from io import BytesIO
 from datetime import datetime
 
-def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None):
+def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None, analyse_ia=None):
     """Génère un PDF avec les résultats de la simulation."""
     
     # Créer un buffer en mémoire
@@ -172,6 +172,22 @@ def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None)
             
             elements.append(table_porteur)
             elements.append(Spacer(1, 10))
+    
+    # Analyse IA si disponible
+    if analyse_ia:
+        elements.append(Paragraph("🤖 Analyse du Conseiller IA", heading_style))
+        
+        # Nettoyer le texte de l'analyse pour le PDF
+        analyse_text = analyse_ia.replace('**', '').replace('*', '').replace('#', '')
+        
+        # Diviser l'analyse en paragraphes
+        paragraphes = analyse_text.split('\n\n')
+        for paragraphe in paragraphes:
+            if paragraphe.strip():
+                elements.append(Paragraph(paragraphe.strip(), styles['Normal']))
+                elements.append(Spacer(1, 6))
+        
+        elements.append(Spacer(1, 20))
     
     # Verdict final
     elements.append(Paragraph("🎯 Verdict Final", heading_style))

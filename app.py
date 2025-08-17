@@ -2,6 +2,7 @@ import streamlit as st
 from data_models import SituationActuelle, NouveauProjet, PremierBien, PorteurProjet
 from calculs import calcul_ratios
 from export_pdf import generer_pdf_simulation
+from analyse_ia import analyser_projet_avec_ia
 
 st.set_page_config(page_title="Simulation Invest Immo", layout="centered")
 
@@ -331,12 +332,56 @@ if st.button("Calculer"):
 
     st.divider()
 
+    # Analyse IA
+    st.header("🤖 Analyse IA - Conseiller Patrimonial")
+    st.markdown("""
+    Obtenez une analyse personnalisée de votre projet par notre IA spécialisée en conseil patrimonial.
+    L'IA analysera vos indicateurs financiers et vous donnera des recommandations adaptées à votre situation.
+    """)
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        if st.button("🔍 Analyser mon projet avec l'IA", type="secondary", use_container_width=True):
+            with st.spinner("🤖 Analyse en cours par notre conseiller IA..."):
+                analyse = analyser_projet_avec_ia(resultats, situation, premier_bien, projet)
+                # Sauvegarder l'analyse en session pour l'export PDF
+                st.session_state['derniere_analyse_ia'] = analyse
+            
+            st.markdown("### 📋 Analyse et Recommandations")
+            
+            # Afficher l'analyse dans un container stylé
+            with st.container():
+                st.markdown(f"""
+                <div style="
+                    background-color: #f8f9fa;
+                    border-left: 5px solid #007bff;
+                    padding: 15px;
+                    margin: 10px 0;
+                    border-radius: 5px;
+                ">
+                {analyse.replace('\n', '<br>')}
+                </div>
+                """, unsafe_allow_html=True)
+    
+    with col2:
+        st.info("""
+        💡 **À propos de l'analyse IA**
+        
+        Notre IA utilise GPT-4o et agit comme un conseiller patrimonial expérimenté.
+        
+        ⚠️ Cette analyse est à titre informatif et ne remplace pas l'avis d'un professionnel.
+        """)
+
+    st.divider()
+
     # Bouton d'export PDF
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if st.button("📄 Télécharger le rapport PDF", type="primary", use_container_width=True):
             try:
-                pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet)
+                # Récupérer l'analyse IA si elle existe dans la session
+                analyse_ia = st.session_state.get('derniere_analyse_ia', None)
+                pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet, analyse_ia)
                 
                 # Créer le nom du fichier avec la date
                 from datetime import datetime
