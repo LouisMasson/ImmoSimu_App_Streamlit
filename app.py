@@ -226,8 +226,22 @@ if prix > 0 and duree > 0:
 # --- Résultats ---
 st.header("3. Résultats de la simulation")
 
+# Bouton pour calculer et sauvegarder les résultats en session
 if st.button("Calculer"):
     resultats = calcul_ratios(situation, premier_bien, projet)
+    
+    # Sauvegarder les résultats en session state
+    st.session_state['resultats'] = resultats
+    st.session_state['situation'] = situation
+    st.session_state['premier_bien'] = premier_bien
+    st.session_state['projet'] = projet
+
+# Afficher les résultats si ils existent en session
+if 'resultats' in st.session_state:
+    resultats = st.session_state['resultats']
+    situation = st.session_state['situation']
+    premier_bien = st.session_state.get('premier_bien', None)
+    projet = st.session_state.get('projet', None)
 
     # Détail des revenus
     col1, col2, col3 = st.columns(3)
@@ -341,27 +355,42 @@ if st.button("Calculer"):
     
     col1, col2 = st.columns([2, 1])
     with col1:
-        if st.button("🔍 Analyser mon projet avec l'IA", type="secondary", use_container_width=True):
-            with st.spinner("🤖 Analyse en cours par notre conseiller IA..."):
-                analyse = analyser_projet_avec_ia(resultats, situation, premier_bien, projet)
-                # Sauvegarder l'analyse en session pour l'export PDF
-                st.session_state['derniere_analyse_ia'] = analyse
+        if st.button("🔍 Analyser mon projet avec l'IA", type="secondary", use_container_width=True, key="btn_ia"):
+            # Conteneur pour l'indicateur de progression
+            progress_container = st.empty()
             
-            st.markdown("### 📋 Analyse et Recommandations")
+            with progress_container.container():
+                # Barre de progression
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Simulation du processus avec vraie progression
+                status_text.text("🔄 Connexion à l'IA...")
+                progress_bar.progress(20)
+                
+                # Analyser avec l'IA
+                try:
+                    status_text.text("🤖 Analyse en cours par notre conseiller IA...")
+                    progress_bar.progress(50)
+                    
+                    analyse = analyser_projet_avec_ia(resultats, situation, premier_bien, projet)
+                    progress_bar.progress(90)
+                    
+                    # Sauvegarder l'analyse en session
+                    st.session_state['derniere_analyse_ia'] = analyse
+                    
+                    status_text.text("✅ Analyse terminée !")
+                    progress_bar.progress(100)
+                    
+                except Exception as e:
+                    status_text.text("❌ Erreur lors de l'analyse")
+                    st.error(f"Erreur : {str(e)}")
+                    progress_bar.progress(0)
             
-            # Afficher l'analyse dans un container stylé
-            with st.container():
-                st.markdown(f"""
-                <div style="
-                    background-color: #f8f9fa;
-                    border-left: 5px solid #007bff;
-                    padding: 15px;
-                    margin: 10px 0;
-                    border-radius: 5px;
-                ">
-                """ + analyse.replace('\n', '<br>') + """
-                </div>
-                """, unsafe_allow_html=True)
+            # Nettoyer le conteneur de progression après un délai
+            import time
+            time.sleep(1)
+            progress_container.empty()
     
     with col2:
         st.info("""
@@ -371,34 +400,80 @@ if st.button("Calculer"):
         
         ⚠️ Cette analyse est à titre informatif et ne remplace pas l'avis d'un professionnel.
         """)
+    
+    # Afficher l'analyse si elle existe
+    if 'derniere_analyse_ia' in st.session_state:
+        st.markdown("### 📋 Analyse et Recommandations")
+        
+        # Afficher l'analyse dans un container stylé
+        with st.container():
+            st.markdown(f"""
+            <div style="
+                background-color: #f8f9fa;
+                border-left: 5px solid #007bff;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 5px;
+            ">
+            """ + st.session_state['derniere_analyse_ia'].replace('\n', '<br>') + """
+            </div>
+            """, unsafe_allow_html=True)
 
     st.divider()
 
     # Bouton d'export PDF
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("📄 Télécharger le rapport PDF", type="primary", use_container_width=True):
-            try:
-                # Récupérer l'analyse IA si elle existe dans la session
-                analyse_ia = st.session_state.get('derniere_analyse_ia', None)
-                pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet, analyse_ia)
+        if st.button("📄 Télécharger le rapport PDF", type="primary", use_container_width=True, key="btn_pdf"):
+            # Conteneur pour l'indicateur de progression PDF
+            pdf_progress_container = st.empty()
+            
+            with pdf_progress_container.container():
+                # Barre de progression pour PDF
+                pdf_progress_bar = st.progress(0)
+                pdf_status_text = st.empty()
                 
-                # Créer le nom du fichier avec la date
-                from datetime import datetime
-                nom_fichier = f"simulation_immobiliere_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-                
-                st.download_button(
-                    label="💾 Cliquez ici pour télécharger",
-                    data=pdf_buffer.getvalue(),
-                    file_name=nom_fichier,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                
-                st.success("✅ PDF généré avec succès ! Cliquez sur le bouton ci-dessus pour télécharger.")
-                
-            except Exception as e:
-                st.error(f"❌ Erreur lors de la génération du PDF : {str(e)}")
+                try:
+                    pdf_status_text.text("📄 Préparation du document...")
+                    pdf_progress_bar.progress(25)
+                    
+                    # Récupérer l'analyse IA si elle existe dans la session
+                    analyse_ia = st.session_state.get('derniere_analyse_ia', None)
+                    
+                    pdf_status_text.text("📊 Compilation des données...")
+                    pdf_progress_bar.progress(50)
+                    
+                    pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet, analyse_ia)
+                    pdf_progress_bar.progress(80)
+                    
+                    # Créer le nom du fichier avec la date
+                    from datetime import datetime
+                    nom_fichier = f"simulation_immobiliere_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                    
+                    pdf_status_text.text("✅ PDF généré avec succès !")
+                    pdf_progress_bar.progress(100)
+                    
+                    # Nettoyer après un délai
+                    import time
+                    time.sleep(1)
+                    pdf_progress_container.empty()
+                    
+                    # Bouton de téléchargement
+                    st.download_button(
+                        label="💾 Cliquez ici pour télécharger",
+                        data=pdf_buffer.getvalue(),
+                        file_name=nom_fichier,
+                        mime="application/pdf",
+                        use_container_width=True,
+                        key="download_pdf"
+                    )
+                    
+                    st.success("✅ PDF généré avec succès ! Cliquez sur le bouton ci-dessus pour télécharger.")
+                    
+                except Exception as e:
+                    pdf_status_text.text("❌ Erreur lors de la génération")
+                    st.error(f"❌ Erreur lors de la génération du PDF : {str(e)}")
+                    pdf_progress_bar.progress(0)
 
     st.divider()
 
@@ -426,3 +501,6 @@ if st.button("Calculer"):
             "• Diminuer le prix du bien\n"
             "• Optimiser les loyers attendus"
         )
+
+else:
+    st.info("👆 Cliquez sur 'Calculer' pour voir les résultats de votre simulation.")
