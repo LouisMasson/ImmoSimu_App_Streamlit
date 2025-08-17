@@ -53,16 +53,27 @@ def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None,
     ]
 
     if premier_bien:
-        data_situation.append(['Mensualité premier bien', f"{resultats['mensualite_premier_bien']:.0f} €"])
-        # Ajouter la date du premier achat et l'ancienneté du prêt si disponibles dans les résultats
-        if 'date_premier_achat' in resultats and resultats['date_premier_achat']:
-            data_situation.append(['Date du premier achat', datetime.fromtimestamp(resultats['date_premier_achat']).strftime('%d/%m/%Y')])
+        # Calculer la mensualité du premier bien si elle n'existe pas dans les résultats
+        mensualite_premier = resultats.get('mensualite_premier_bien', premier_bien.mensualite_actuelle)
+        data_situation.append(['Mensualité premier bien', f"{mensualite_premier:.0f} €"])
+        
+        # Ajouter la date du premier achat
+        if hasattr(premier_bien, 'date_achat') and premier_bien.date_achat:
+            data_situation.append(['Date du premier achat', premier_bien.date_achat.strftime('%d/%m/%Y')])
+        
+        # Ajouter l'ancienneté du prêt si disponible dans les résultats
         if 'anciennete_pret_annees' in resultats and resultats['anciennete_pret_annees'] is not None:
             data_situation.append(['Ancienneté du prêt', f"{resultats['anciennete_pret_annees']:.1f} ans"])
+        
+        # Ajouter la durée restante si disponible
+        if 'duree_restante_annees' in resultats and resultats['duree_restante_annees'] is not None:
+            data_situation.append(['Durée restante', f"{resultats['duree_restante_annees']:.1f} ans"])
 
 
     if projet:
-        data_situation.append(['Mensualité nouveau projet', f"{resultats['mensualite_nouveau']:.0f} €"])
+        mensualite_nouveau = resultats.get('mensualite_nouveau', 0)
+        if mensualite_nouveau > 0:
+            data_situation.append(['Mensualité nouveau projet', f"{mensualite_nouveau:.0f} €"])
 
     data_situation.append(['Total mensualités', f"{resultats['mensualites_totales']:.0f} €"])
 
@@ -128,7 +139,7 @@ def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None,
             ['Capital emprunté', f"{capital_emprunte:.0f} €"],
             ['Taux nominal', f"{projet.taux_nominal:.2f}%"],
             ['Durée du prêt', f"{projet.duree_annees} ans"],
-            ['Mensualité calculée', f"{resultats['mensualite_nouveau']:.0f} €"],
+            ['Mensualité calculée', f"{resultats.get('mensualite_nouveau', 0):.0f} €"],
         ]
 
         if projet.loyer_attendu > 0:
@@ -177,20 +188,28 @@ def generer_pdf_simulation(resultats, situation, premier_bien=None, projet=None,
             elements.append(Spacer(1, 10))
 
     # Analyse IA si disponible
-    if analyse_ia:
+    if analyse_ia and analyse_ia.strip():
         elements.append(Paragraph("🤖 Analyse du Conseiller IA", heading_style))
 
-        # Nettoyer le texte de l'analyse pour le PDF
-        analyse_text = analyse_ia.replace('**', '').replace('*', '').replace('#', '')
+        try:
+            # Nettoyer le texte de l'analyse pour le PDF
+            analyse_text = str(analyse_ia).replace('**', '').replace('*', '').replace('#', '')
+            
+            # Remplacer les caractères problématiques
+            analyse_text = analyse_text.replace('€', 'EUR').replace('•', '-').replace('→', '->')
 
-        # Diviser l'analyse en paragraphes
-        paragraphes = analyse_text.split('\n\n')
-        for paragraphe in paragraphes:
-            if paragraphe.strip():
-                elements.append(Paragraph(paragraphe.strip(), styles['Normal']))
-                elements.append(Spacer(1, 6))
+            # Diviser l'analyse en paragraphes
+            paragraphes = analyse_text.split('\n\n')
+            for paragraphe in paragraphes:
+                if paragraphe.strip():
+                    elements.append(Paragraph(paragraphe.strip(), styles['Normal']))
+                    elements.append(Spacer(1, 6))
 
-        elements.append(Spacer(1, 20))
+            elements.append(Spacer(1, 20))
+        except Exception as e:
+            # En cas d'erreur, ajouter un message d'erreur simple
+            elements.append(Paragraph("Erreur lors de l'affichage de l'analyse IA.", styles['Normal']))
+            elements.append(Spacer(1, 20))
 
     # Verdict final
     elements.append(Paragraph("🎯 Verdict Final", heading_style))
