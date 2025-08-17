@@ -467,56 +467,39 @@ if 'resultats' in st.session_state:
     # Bouton d'export PDF
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("📄 Télécharger le rapport PDF", type="primary", use_container_width=True, key="btn_pdf"):
-            # Conteneur pour l'indicateur de progression PDF
-            pdf_progress_container = st.empty()
-            
-            with pdf_progress_container.container():
-                # Barre de progression pour PDF
-                pdf_progress_bar = st.progress(0)
-                pdf_status_text = st.empty()
+        if st.button("📄 Générer le rapport PDF", type="primary", use_container_width=True, key="btn_pdf"):
+            try:
+                # Récupérer l'analyse IA si elle existe dans la session
+                analyse_ia = st.session_state.get('derniere_analyse_ia', None)
                 
-                try:
-                    pdf_status_text.text("📄 Préparation du document...")
-                    pdf_progress_bar.progress(25)
-                    
-                    # Récupérer l'analyse IA si elle existe dans la session
-                    analyse_ia = st.session_state.get('derniere_analyse_ia', None)
-                    
-                    pdf_status_text.text("📊 Compilation des données...")
-                    pdf_progress_bar.progress(50)
-                    
-                    pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet, analyse_ia)
-                    pdf_progress_bar.progress(80)
-                    
-                    # Créer le nom du fichier avec la date
-                    from datetime import datetime
-                    nom_fichier = f"simulation_immobiliere_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-                    
-                    pdf_status_text.text("✅ PDF généré avec succès !")
-                    pdf_progress_bar.progress(100)
-                    
-                    # Nettoyer après un délai
-                    import time
-                    time.sleep(1)
-                    pdf_progress_container.empty()
-                    
-                    # Bouton de téléchargement
-                    st.download_button(
-                        label="💾 Cliquez ici pour télécharger",
-                        data=pdf_buffer.getvalue(),
-                        file_name=nom_fichier,
-                        mime="application/pdf",
-                        use_container_width=True,
-                        key="download_pdf"
-                    )
-                    
-                    st.success("✅ PDF généré avec succès ! Cliquez sur le bouton ci-dessus pour télécharger.")
-                    
-                except Exception as e:
-                    pdf_status_text.text("❌ Erreur lors de la génération")
-                    st.error(f"❌ Erreur lors de la génération du PDF : {str(e)}")
-                    pdf_progress_bar.progress(0)
+                # Générer le PDF directement
+                pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet, analyse_ia)
+                
+                # Créer le nom du fichier avec la date
+                from datetime import datetime
+                nom_fichier = f"simulation_immobiliere_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                
+                # Sauvegarder le PDF en session pour éviter les conflits
+                st.session_state['pdf_data'] = pdf_buffer.getvalue()
+                st.session_state['pdf_filename'] = nom_fichier
+                
+                st.success("✅ PDF généré avec succès ! Utilisez le bouton ci-dessous pour télécharger.")
+                
+            except Exception as e:
+                st.error(f"❌ Erreur lors de la génération du PDF : {str(e)}")
+
+    # Bouton de téléchargement séparé (évite les conflits)
+    if 'pdf_data' in st.session_state and 'pdf_filename' in st.session_state:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.download_button(
+                label="💾 Télécharger le rapport PDF",
+                data=st.session_state['pdf_data'],
+                file_name=st.session_state['pdf_filename'],
+                mime="application/pdf",
+                use_container_width=True,
+                key="download_pdf_final"
+            )
 
     st.divider()
 
