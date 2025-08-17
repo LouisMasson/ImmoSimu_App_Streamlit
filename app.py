@@ -3,8 +3,9 @@ from data_models import SituationActuelle, NouveauProjet, PremierBien, PorteurPr
 from calculs import calcul_ratios
 from export_pdf import generer_pdf_simulation
 from analyse_ia import analyser_projet_avec_ia
+from dashboard_rentabilite import afficher_dashboard_rentabilite
 
-st.set_page_config(page_title="Simulation Invest Immo", layout="centered")
+st.set_page_config(page_title="Simulation Invest Immo", layout="wide")
 
 # --- Titre principal ---
 st.title("📊 Simulateur immobilier simplifié")
@@ -382,6 +383,11 @@ if 'resultats' in st.session_state:
                         st.error("⚠️ Faible")
 
     st.divider()
+
+    # Dashboard de rentabilité (uniquement pour les investissements locatifs)
+    if projet and projet.loyer_attendu > 0:
+        afficher_dashboard_rentabilite(situation, premier_bien, projet, resultats)
+        st.divider()
 
     # Analyse IA
     st.header("🤖 Analyse IA - Conseiller Patrimonial")
