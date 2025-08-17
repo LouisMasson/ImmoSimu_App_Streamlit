@@ -84,16 +84,14 @@ Analyse le projet immobilier suivant et fournis une analyse détaillée et des r
 
 {contexte_projet}
 
-Ton analyse doit inclure :
+Ton analyse doit être TRÈS CONCISE et inclure :
 
-1. **ÉVALUATION GLOBALE** : Synthèse de la faisabilité du projet
-2. **POINTS FORTS** : Ce qui joue en faveur du projet
-3. **POINTS D'ATTENTION** : Les risques ou faiblesses identifiés
-4. **RECOMMANDATIONS CONCRÈTES** : Actions à entreprendre pour optimiser le projet
-5. **STRATÉGIE PATRIMONIALE** : Conseils sur l'approche globale et les perspectives d'évolution
+1. **ÉVALUATION** : Faisabilité (1-2 phrases)
+2. **POINTS CLÉS** : Principal atout et principal risque
+3. **CONSEIL PRIORITAIRE** : 1 recommandation essentielle
 
-Sois précis, professionnel et bienveillant. Utilise des emojis pour structurer ton analyse et la rendre plus lisible.
-Limite ta réponse à 800 mots maximum.
+Sois précis, professionnel et bienveillant. Utilise des emojis.
+IMPÉRATIF : Limite ta réponse à 500 caractères maximum (environ 80-100 mots).
 """
     
     try:
@@ -110,7 +108,7 @@ Limite ta réponse à 800 mots maximum.
                     "content": prompt
                 }
             ],
-            max_tokens=1200,
+            max_tokens=150,
             temperature=0.7
         )
         
