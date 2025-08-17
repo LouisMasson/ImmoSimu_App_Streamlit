@@ -1,6 +1,7 @@
 import streamlit as st
 from data_models import SituationActuelle, NouveauProjet, PremierBien, PorteurProjet
 from calculs import calcul_ratios
+from export_pdf import generer_pdf_simulation
 
 st.set_page_config(page_title="Simulation Invest Immo", layout="centered")
 
@@ -327,6 +328,32 @@ if st.button("Calculer"):
                         st.success("✅ OK")
                     else:
                         st.error("⚠️ Faible")
+
+    st.divider()
+
+    # Bouton d'export PDF
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("📄 Télécharger le rapport PDF", type="primary", use_container_width=True):
+            try:
+                pdf_buffer = generer_pdf_simulation(resultats, situation, premier_bien, projet)
+                
+                # Créer le nom du fichier avec la date
+                from datetime import datetime
+                nom_fichier = f"simulation_immobiliere_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+                
+                st.download_button(
+                    label="💾 Cliquez ici pour télécharger",
+                    data=pdf_buffer.getvalue(),
+                    file_name=nom_fichier,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                
+                st.success("✅ PDF généré avec succès ! Cliquez sur le bouton ci-dessus pour télécharger.")
+                
+            except Exception as e:
+                st.error(f"❌ Erreur lors de la génération du PDF : {str(e)}")
 
     st.divider()
 
