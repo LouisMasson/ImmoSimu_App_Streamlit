@@ -35,6 +35,10 @@ PREMIER BIEN EXISTANT :
 - Mensualité actuelle : {premier_bien.mensualite_actuelle:,.0f} €
 - Loyer perçu : {premier_bien.loyer_percu:,.0f} €
 """
+        if resultats.get('anciennete_pret_annees', 0) > 0:
+            contexte_projet += f"""- Ancienneté du prêt : {resultats['anciennete_pret_annees']:.1f} ans
+- Durée restante : {resultats['duree_restante_annees']:.1f} ans
+"""
     else:
         contexte_projet += "- Aucun bien immobilier existant\n"
     

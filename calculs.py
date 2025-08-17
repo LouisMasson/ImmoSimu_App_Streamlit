@@ -1,6 +1,7 @@
 import math
 from data_models import SituationActuelle, NouveauProjet, PremierBien
 from typing import Optional
+from datetime import date
 
 def mensualite_credit(capital, taux_annuel, duree_annees):
     """Calcule la mensualité d'un prêt amortissable (hors assurance)."""
@@ -34,9 +35,18 @@ def calcul_ratios(situation: SituationActuelle, premier_bien: Optional[PremierBi
     # Premier bien existant
     mensualite_premier_bien = 0
     loyer_premier_bien = 0
+    anciennete_pret_mois = 0
+    duree_restante_mois = 0
+    
     if premier_bien:
         mensualite_premier_bien = premier_bien.mensualite_actuelle
         loyer_premier_bien = premier_bien.loyer_percu
+        
+        # Calcul de l'ancienneté du prêt
+        if premier_bien.date_achat and premier_bien.duree_pret_initiale:
+            anciennete_pret_mois = (date.today() - premier_bien.date_achat).days // 30
+            duree_initiale_mois = premier_bien.duree_pret_initiale * 12
+            duree_restante_mois = max(0, duree_initiale_mois - anciennete_pret_mois)
 
     # Nouveau projet
     mensualite_nouveau = 0
@@ -96,4 +106,8 @@ def calcul_ratios(situation: SituationActuelle, premier_bien: Optional[PremierBi
         "taux_effort": taux_effort,
         "reste_a_vivre": reste_a_vivre,
         "details_porteurs": details_porteurs,
+        "anciennete_pret_mois": anciennete_pret_mois,
+        "duree_restante_mois": duree_restante_mois,
+        "anciennete_pret_annees": anciennete_pret_mois / 12 if anciennete_pret_mois > 0 else 0,
+        "duree_restante_annees": duree_restante_mois / 12 if duree_restante_mois > 0 else 0,
     }

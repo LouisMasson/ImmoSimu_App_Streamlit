@@ -1,10 +1,13 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import date
 
 class PremierBien(BaseModel):
     prix_achat: float
     mensualite_actuelle: float
     loyer_percu: float = 0  # 0 si résidence principale
+    date_achat: Optional[date] = None  # Date d'achat du bien
+    duree_pret_initiale: Optional[int] = None  # Durée initiale du prêt en années
 
 class PorteurProjet(BaseModel):
     nom: str

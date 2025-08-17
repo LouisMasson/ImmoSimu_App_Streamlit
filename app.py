@@ -173,11 +173,27 @@ if a_premier_bien:
         help="Loyer mensuel perçu si c'est un investissement locatif. Saisir 0 si c'est votre résidence principale."
     )
 
+    col1, col2 = st.columns(2)
+    with col1:
+        date_achat_premier = st.date_input(
+            "Date d'achat du bien",
+            help="Date à laquelle vous avez acheté ce bien immobilier."
+        )
+    
+    with col2:
+        duree_pret_premier = st.number_input(
+            "Durée initiale du prêt (années)",
+            min_value=1, max_value=30, value=20, step=1,
+            help="Durée initiale du prêt immobilier pour ce bien."
+        )
+
     if prix_premier > 0 and mensualite_premier > 0:
         premier_bien = PremierBien(
             prix_achat=prix_premier,
             mensualite_actuelle=mensualite_premier,
-            loyer_percu=loyer_premier
+            loyer_percu=loyer_premier,
+            date_achat=date_achat_premier,
+            duree_pret_initiale=duree_pret_premier
         )
 
 # --- Nouveau projet ---
@@ -309,6 +325,27 @@ if 'resultats' in st.session_state:
             st.success("✅ Suffisant")
         else:
             st.error("⚠️ Insuffisant")
+
+    # Informations sur le premier bien si applicable
+    if premier_bien and resultats.get('anciennete_pret_annees', 0) > 0:
+        st.divider()
+        st.subheader("🏠 Informations sur votre premier bien")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Ancienneté du prêt", f"{resultats['anciennete_pret_annees']:.1f} ans")
+        with col2:
+            st.metric("Durée restante", f"{resultats['duree_restante_annees']:.1f} ans")
+        with col3:
+            pourcentage_rembourse = (resultats['anciennete_pret_mois'] / (resultats['anciennete_pret_mois'] + resultats['duree_restante_mois'])) * 100 if (resultats['anciennete_pret_mois'] + resultats['duree_restante_mois']) > 0 else 0
+            st.metric("% remboursé", f"{pourcentage_rembourse:.1f}%")
+        with col4:
+            if resultats['duree_restante_annees'] <= 5:
+                st.success("✅ Fin proche")
+            elif resultats['duree_restante_annees'] <= 10:
+                st.info("ℹ️ Moyen terme")
+            else:
+                st.warning("⏳ Long terme")
 
     # Détails par porteur si applicable
     if resultats.get('details_porteurs'):
