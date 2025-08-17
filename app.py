@@ -359,7 +359,7 @@ if st.button("Calculer"):
                     margin: 10px 0;
                     border-radius: 5px;
                 ">
-                {analyse.replace('\n', '<br>')}
+                """ + analyse.replace('\n', '<br>') + """
                 </div>
                 """, unsafe_allow_html=True)
     
