@@ -1,5 +1,5 @@
 import streamlit as st
-from data_models import SituationActuelle, NouveauProjet
+from data_models import SituationActuelle, NouveauProjet, PremierBien
 from calculs import calcul_ratios
 
 st.set_page_config(page_title="Simulation Invest Immo", layout="centered")
@@ -37,21 +37,21 @@ with st.expander("📖 Mode d’emploi (cliquez pour afficher)", expanded=True):
 st.header("1. Votre situation actuelle")
 
 revenus = st.number_input(
-    "Revenus mensuels nets",
+    "Revenus mensuels nets (salaires uniquement)",
     min_value=0.0, step=100.0,
-    help="Somme de vos salaires nets (après impôts et cotisations) + loyers nets déjà perçus de vos biens locatifs."
+    help="Vos salaires nets (après impôts et cotisations). Les loyers seront comptés séparément."
 )
 
 charges = st.number_input(
     "Charges mensuelles (hors crédits)",
     min_value=0.0, step=50.0,
-    help="Vos charges fixes : alimentation, assurances, abonnements, factures, etc. ⚠️ N’incluez pas vos mensualités de prêts ici."
+    help="Vos charges fixes : alimentation, assurances, abonnements, factures, etc. ⚠️ N'incluez pas vos mensualités de prêts ici."
 )
 
 credits = st.number_input(
-    "Mensualités de crédits en cours",
+    "Mensualités autres crédits (hors immobilier)",
     min_value=0.0, step=50.0,
-    help="Total des mensualités de crédits (immobilier, consommation, auto, etc.) que vous remboursez déjà."
+    help="Mensualités de crédits consommation, auto, etc. ⚠️ N'incluez pas les prêts immobiliers ici, ils seront traités séparément."
 )
 
 personnes = st.number_input(
@@ -66,6 +66,39 @@ situation = SituationActuelle(
     credits_mensuels=credits,
     personnes_foyer=personnes,
 )
+
+# --- Premier bien existant ---
+st.header("1.bis. Premier bien immobilier (optionnel)")
+st.markdown("Si vous avez déjà un bien immobilier avec un prêt en cours :")
+
+a_premier_bien = st.checkbox("J'ai déjà un bien immobilier avec un prêt en cours")
+
+premier_bien = None
+if a_premier_bien:
+    prix_premier = st.number_input(
+        "Prix d'achat du premier bien (€)",
+        min_value=0.0, step=1000.0,
+        help="Prix d'achat de votre premier bien immobilier."
+    )
+
+    mensualite_premier = st.number_input(
+        "Mensualité actuelle du prêt (€)",
+        min_value=0.0, step=50.0,
+        help="Mensualité que vous payez actuellement pour ce bien."
+    )
+
+    loyer_premier = st.number_input(
+        "Loyer perçu (€)",
+        min_value=0.0, step=50.0,
+        help="Loyer mensuel perçu si c'est un investissement locatif. Saisir 0 si c'est votre résidence principale."
+    )
+
+    if prix_premier > 0 and mensualite_premier > 0:
+        premier_bien = PremierBien(
+            prix_achat=prix_premier,
+            mensualite_actuelle=mensualite_premier,
+            loyer_percu=loyer_premier
+        )
 
 # --- Nouveau projet ---
 st.header("2. Simulation du nouveau projet")
@@ -97,7 +130,7 @@ duree = st.number_input(
 loyer = st.number_input(
     "Loyer attendu (€)",
     min_value=0.0, step=50.0,
-    help="Montant du loyer mensuel attendu (si investissement locatif). Saisir 0 si c’est une résidence principale."
+    help="Montant du loyer mensuel attendu (si investissement locatif). Saisir 0 si c'est une résidence principale."
 )
 
 projet = None
@@ -114,23 +147,98 @@ if prix > 0 and duree > 0:
 st.header("3. Résultats de la simulation")
 
 if st.button("Calculer"):
-    resultats = calcul_ratios(situation, projet)
+    resultats = calcul_ratios(situation, premier_bien, projet)
 
-    st.metric("Mensualité du nouveau prêt", f"{resultats['mensualite_nouveau']:.0f} €")
-    st.metric("Taux d’endettement", f"{resultats['taux_endettement']*100:.1f} %")
-    st.metric("Reste à vivre", f"{resultats['reste_a_vivre']:.0f} €")
+    # Détail des revenus
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Revenus salaires", f"{resultats['revenus_salaires']:.0f} €")
+    with col2:
+        st.metric("Revenus locatifs", f"{resultats['revenus_locatifs']:.0f} €")
+    with col3:
+        st.metric("Revenus totaux", f"{resultats['revenus_totaux']:.0f} €")
 
-    seuil = 0.35  # 35% est la règle de référence
-    reste_min = 800 * situation.personnes_foyer  # seuil simple : 800€/personne
+    st.divider()
 
-    if resultats['taux_endettement'] <= seuil and resultats['reste_a_vivre'] >= reste_min:
+    # Détail des charges
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Mensualités immobilier", f"{resultats['mensualites_immobilier']:.0f} €")
+    with col2:
+        st.metric("Autres crédits", f"{resultats['mensualites_autres_credits']:.0f} €")
+    with col3:
+        st.metric("Total mensualités", f"{resultats['mensualites_totales']:.0f} €")
+
+    if projet:
+        st.metric("💡 Mensualité du nouveau prêt", f"{resultats['mensualite_nouveau']:.0f} €")
+
+    st.divider()
+
+    # Taux et ratios
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        taux_endettement_pct = resultats['taux_endettement'] * 100
+        st.metric(
+            "📊 Taux d'endettement", 
+            f"{taux_endettement_pct:.1f} %",
+            help="Total mensualités ÷ revenus totaux (salaires + loyers). Seuil bancaire : 35%"
+        )
+        if taux_endettement_pct > 35:
+            st.error("⚠️ Dépasse 35%")
+        else:
+            st.success("✅ OK")
+
+    with col2:
+        taux_effort_pct = resultats['taux_effort'] * 100
+        st.metric(
+            "💪 Taux d'effort", 
+            f"{taux_effort_pct:.1f} %",
+            help="Total mensualités ÷ revenus salaires uniquement. Indicateur de l'effort sur vos revenus professionnels."
+        )
+        if taux_effort_pct > 45:
+            st.error("⚠️ Effort élevé")
+        elif taux_effort_pct > 35:
+            st.warning("⚠️ Effort modéré")
+        else:
+            st.success("✅ Effort faible")
+
+    with col3:
+        reste_a_vivre = resultats['reste_a_vivre']
+        reste_min = 800 * situation.personnes_foyer
+        st.metric(
+            "💰 Reste à vivre", 
+            f"{reste_a_vivre:.0f} €",
+            help=f"Revenus totaux - mensualités - charges. Minimum recommandé : {reste_min}€"
+        )
+        if reste_a_vivre >= reste_min:
+            st.success("✅ Suffisant")
+        else:
+            st.error("⚠️ Insuffisant")
+
+    st.divider()
+
+    # Verdict global
+    if (resultats['taux_endettement'] <= 0.35 and 
+        resultats['reste_a_vivre'] >= reste_min):
         st.success(
-            "✅ A priori finançable : votre taux d’endettement et reste à vivre respectent les règles bancaires habituelles.\n"
+            "🎉 **PROJET FINANÇABLE** ✅\n\n"
+            "Votre taux d'endettement et reste à vivre respectent les règles bancaires habituelles.\n"
             "➡️ Vous pouvez présenter ce projet à votre banque pour validation."
         )
     else:
-        st.warning(
-            "⚠️ Risque de refus : soit votre taux d’endettement dépasse 35 %, "
-            "soit votre reste à vivre est jugé insuffisant.\n"
-            "➡️ Ajustez l’apport, la durée du prêt ou le montant du projet."
+        messages_problemes = []
+        if resultats['taux_endettement'] > 0.35:
+            messages_problemes.append(f"• Taux d'endettement trop élevé : {resultats['taux_endettement']*100:.1f}% (max 35%)")
+        if resultats['reste_a_vivre'] < reste_min:
+            messages_problemes.append(f"• Reste à vivre insuffisant : {reste_a_vivre:.0f}€ (min {reste_min}€)")
+
+        st.error(
+            "⚠️ **RISQUE DE REFUS BANCAIRE**\n\n" + 
+            "\n".join(messages_problemes) + 
+            "\n\n➡️ **Solutions possibles :**\n"
+            "• Augmenter l'apport personnel\n"
+            "• Allonger la durée du prêt\n"
+            "• Diminuer le prix du bien\n"
+            "• Optimiser les loyers attendus"
         )
