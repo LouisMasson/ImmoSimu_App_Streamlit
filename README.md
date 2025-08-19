@@ -3,6 +3,12 @@
 
 Une application Streamlit complète pour simuler et analyser la faisabilité de projets d'investissement immobilier.
 
+## 🖼️ Aperçu de l'interface
+
+![Interface du simulateur](attached_assets/image_1755626365167.png)
+
+*Interface principale du simulateur avec le guide d'utilisation en 3 étapes*
+
 ## 🚀 Fonctionnalités
 
 - **Simulation de financement** : Calcul automatique des ratios bancaires (taux d'endettement, reste à vivre)
