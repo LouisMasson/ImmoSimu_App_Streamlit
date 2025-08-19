@@ -14,6 +14,10 @@ def analyser_projet_avec_ia(resultats: dict, situation: SituationActuelle, premi
     if not api_key:
         return "❌ Erreur : Clé API OpenAI non configurée. Veuillez ajouter OPENAI_API_KEY dans les secrets."
     
+    # Validation basique de la clé API
+    if not api_key.startswith('sk-') or len(api_key) < 40:
+        return "❌ Erreur : Format de clé API OpenAI invalide."
+    
     # Configurer le client OpenAI
     client = openai.OpenAI(api_key=api_key)
     
@@ -109,7 +113,8 @@ IMPÉRATIF : Limite ta réponse à 500 caractères maximum (environ 80-100 mots)
                 }
             ],
             max_tokens=150,
-            temperature=0.7
+            temperature=0.7,
+            timeout=30.0
         )
         
         return response.choices[0].message.content
